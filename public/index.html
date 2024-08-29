@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp QR Scan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #qr-container {
+            text-align: center;
+        }
+        #qr-container img {
+            width: 300px;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="qr-container">
+        <h1>Scan WhatsApp QR Code</h1>
+        <img id="qr-code" src="" alt="QR Code" />
+        <p id="loading">Loading QR Code...</p>
+        <p id="notification" style="display:none; color: green;">Device connected!</p>
+    </div>
+
+    <script>
+        async function fetchQRCode() {
+            try {
+                const response = await fetch('/qr');
+                const data = await response.json();
+                if (data.qrCode) {
+                    document.getElementById('qr-code').src = data.qrCode;
+                    document.getElementById('loading').style.display = 'none';
+                } else if (data.connected) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('qr-container').innerHTML = '<p style="color: green;">Device connected!</p>';
+                } else {
+                    setTimeout(fetchQRCode, 1000); // Retry fetching QR code after 1 second
+                }
+            } catch (error) {
+                console.error('Failed to fetch QR code:', error);
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                if (data.connected) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('qr-container').innerHTML = '<p style="color: green;">Device connected!</p>';
+                } else {
+                    setTimeout(checkStatus, 1000); // Check status every second
+                }
+            } catch (error) {
+                console.error('Failed to check status:', error);
+            }
+        }
+
+        // Start fetching QR code and checking status
+        fetchQRCode();
+        checkStatus();
+    </script>
+</body>
+</html>
