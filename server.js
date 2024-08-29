@@ -6,6 +6,8 @@ const app = express();
 app.use(express.json());
 let qrCodeData = '';
 let isConnected = false;
+let connectionState = 'DISCONNECTED';
+let connectedNumber = ''; // Variable to store connected WhatsApp number
 
 const client = new Client();
 
@@ -17,13 +19,43 @@ client.on('qr', (qr) => {
         } else {
             qrCodeData = url; // Store QR code as data URL
             isConnected = false; // Set connected to false if QR is regenerated
+            connectionState = 'DISCONNECTED';
+            connectedNumber = ''; // Reset connected number
         }
     });
 });
 
-client.on('ready', () => {
+client.on('ready', async () => {
     console.log('WhatsApp Client is ready!');
     isConnected = true; // Mark as connected when ready
+    connectionState = 'CONNECTED';
+
+    // Get the connected WhatsApp number
+    const info = await client.getState();
+    if (info) {
+        connectedNumber = await client.info.wid._serialized; // Get connected number
+        console.log('Connected Number:', connectedNumber);
+    }
+});
+
+client.on('disconnected', (reason) => {
+    console.log('WhatsApp Client was disconnected:', reason);
+    isConnected = false;
+    connectionState = 'DISCONNECTED';
+    connectedNumber = ''; // Reset connected number on disconnect
+});
+
+client.on('auth_failure', (msg) => {
+    console.error('Authentication failure:', msg);
+    isConnected = false;
+    connectionState = 'AUTH_FAILED';
+    connectedNumber = ''; // Reset connected number on auth failure
+});
+
+client.on('state_changed', (state) => {
+    console.log('State changed:', state);
+    connectionState = state;
+    isConnected = state === 'CONNECTED';
 });
 
 client.initialize();
@@ -33,7 +65,7 @@ app.get('/qr', (req, res) => {
     if (qrCodeData && !isConnected) {
         res.json({ qrCode: qrCodeData });
     } else if (isConnected) {
-        res.json({ connected: true });
+        res.json({ connected: true, connectedNumber });
     } else {
         res.status(404).json({ error: 'QR code not available yet' });
     }
@@ -41,11 +73,7 @@ app.get('/qr', (req, res) => {
 
 // Endpoint to check if device is connected
 app.get('/status', (req, res) => {
-    if (isConnected) {
-        res.json({ connected: true });
-    } else {
-        res.json({ connected: false });
-    }
+    res.json({ connected: isConnected, state: connectionState, connectedNumber });
 });
 
 app.post('/send-message', async (req, res) => {
@@ -55,26 +83,24 @@ app.post('/send-message', async (req, res) => {
         return res.status(400).json({ error: 'Numbers and message are required.' });
     }
 
+    if (!isConnected) {
+        return res.status(503).json({ error: 'WhatsApp Client is not connected.' });
+    }
+
     try {
-        // Mengumpulkan semua promise untuk pengiriman pesan
         const sendPromises = numbers.map(number => {
             const formattedNumber = `${number}@c.us`;
             return client.sendMessage(formattedNumber, message);
         });
 
-        // Menunggu semua promise selesai
         await Promise.all(sendPromises);
-
-        // Mengirimkan satu respons setelah semua pesan dikirim
         res.json({ status: 'Messages sent successfully' });
     } catch (error) {
-        // Menangani kesalahan jika terjadi
-        if (!res.headersSent) { // Pastikan headers belum dikirim
+        if (!res.headersSent) {
             res.status(500).json({ error: 'Failed to send messages', details: error });
         }
     }
 });
-
 
 // Serve static files (frontend)
 app.use(express.static('public'));

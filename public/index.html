@@ -28,7 +28,7 @@
         <h1>Scan WhatsApp QR Code</h1>
         <img id="qr-code" src="" alt="QR Code" />
         <p id="loading">Loading QR Code...</p>
-        <p id="notification" style="display:none; color: green;">Device connected!</p>
+        <p id="notification" style="display:none; color: green;"></p>
     </div>
 
     <script>
@@ -41,7 +41,7 @@
                     document.getElementById('loading').style.display = 'none';
                 } else if (data.connected) {
                     document.getElementById('loading').style.display = 'none';
-                    document.getElementById('qr-container').innerHTML = '<p style="color: green;">Device connected!</p>';
+                    document.getElementById('qr-container').innerHTML = `<p style="color: green;">Device connected! Number: ${data.connectedNumber}</p>`;
                 } else {
                     setTimeout(fetchQRCode, 1000); // Retry fetching QR code after 1 second
                 }
@@ -56,7 +56,7 @@
                 const data = await response.json();
                 if (data.connected) {
                     document.getElementById('loading').style.display = 'none';
-                    document.getElementById('qr-container').innerHTML = '<p style="color: green;">Device connected!</p>';
+                    document.getElementById('qr-container').innerHTML = `<p style="color: green;">Device connected! Number: ${data.connectedNumber}</p>`;
                 } else {
                     setTimeout(checkStatus, 1000); // Check status every second
                 }
