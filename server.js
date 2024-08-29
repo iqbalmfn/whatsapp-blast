@@ -62,4 +62,7 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
-module.exports = app; // Export Express app as a handler
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
